@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model license {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  product_id  Int
+  order_id    Int
+  license_key String   @unique(map: "License_license_key_key") @db.VarChar(255)
+  active      Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+  order       order    @relation(fields: [order_id], references: [id], map: "License_order_id_fkey")
+  product     product  @relation(fields: [product_id], references: [id], map: "License_product_id_fkey")
+  user        user     @relation(fields: [user_id], references: [id], map: "License_user_id_fkey")
+
+  @@index([active], map: "License_active_idx")
+  @@index([order_id], map: "License_order_id_idx")
+  @@index([product_id], map: "License_product_id_idx")
+  @@index([user_id], map: "License_user_id_idx")
+}
+
+model order {
+  id           Int          @id @default(autoincrement())
+  user_id      Int
+  total_amount Decimal      @db.Decimal(10, 2)
+  status       order_status @default(pending)
+  created_at   DateTime     @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+  license      license[]
+  user         user         @relation(fields: [user_id], references: [id], map: "Order_user_id_fkey")
+  orderitem    orderitem[]
+  payment      payment[]
+
+  @@index([status], map: "Order_status_idx")
+  @@index([user_id], map: "Order_user_id_idx")
+}
+
+model orderitem {
+  id         Int      @id @default(autoincrement())
+  order_id   Int
+  product_id Int
+  quantity   Int      @default(1)
+  price      Decimal  @db.Decimal(10, 2)
+  created_at DateTime @default(now())
+  order      order    @relation(fields: [order_id], references: [id], map: "OrderItem_order_id_fkey")
+  product    product  @relation(fields: [product_id], references: [id], map: "OrderItem_product_id_fkey")
+
+  @@index([order_id], map: "OrderItem_order_id_idx")
+  @@index([product_id], map: "OrderItem_product_id_idx")
+}
+
+model payment {
+  id             Int            @id @default(autoincrement())
+  order_id       Int
+  method         payment_method
+  status         payment_status @default(pending)
+  amount         Decimal        @db.Decimal(10, 2)
+  provider       String?        @db.VarChar(100)
+  transaction_id String?        @db.VarChar(255)
+  proof_path     String?        @db.VarChar(500)
+  created_at     DateTime       @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+  order          order          @relation(fields: [order_id], references: [id], map: "Payment_order_id_fkey")
+
+  @@index([order_id], map: "Payment_order_id_idx")
+  @@index([status], map: "Payment_status_idx")
+  @@index([transaction_id], map: "Payment_transaction_id_idx")
+}
+
+model product {
+  id          Int            @id @default(autoincrement())
+  name        String         @db.VarChar(255)
+  slug        String         @unique(map: "Product_slug_key") @db.VarChar(255)
+  description String?        @db.Text
+  price       Decimal        @db.Decimal(10, 2)
+  image       String?        @db.VarChar(500)
+  status      product_status @default(active)
+  created_at  DateTime       @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+  license     license[]
+  orderitem   orderitem[]
+
+  @@index([status], map: "Product_status_idx")
+}
+
+model sitesetting {
+  id            Int      @id @default(autoincrement())
+  setting_key   String   @unique(map: "SiteSetting_setting_key_key") @db.VarChar(255)
+  setting_value String?  @db.Text
+  created_at    DateTime @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+}
+
+model testimonial {
+  id         Int                @id @default(autoincrement())
+  name       String             @db.VarChar(255)
+  content    String             @db.Text
+  rating     Int?               @db.UnsignedTinyInt
+  status     testimonial_status @default(active)
+  created_at DateTime           @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+
+  @@index([status], map: "Testimonial_status_idx")
+}
+
+model user {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique(map: "User_email_key") @db.VarChar(255)
+  created_at    DateTime  @default(now())
+  google_id     String?   @unique(map: "User_google_id_key") @db.VarChar(255)
+  password_hash String?   @db.VarChar(255)
+  role          user_role @default(user)
+  updated_at   DateTime @default(now()) @updatedAt
+  license       license[]
+  order         order[]
+}
+
+enum payment_method {
+  razorpay
+  manual
+  bank_transfer
+  crypto
+}
+
+enum order_status {
+  pending
+  confirmed
+  cancelled
+  completed
+}
+
+enum payment_status {
+  pending
+  paid
+  failed
+  rejected
+}
+
+enum testimonial_status {
+  active
+  inactive
+}
+
+enum user_role {
+  user
+  superadmin
+}
+
+enum product_status {
+  active
+  inactive
+}
